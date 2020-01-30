@@ -1,0 +1,3 @@
+[submodule "lib/python_modules/libobi-python"]
+	path = lib/python_modules/libobi-python
+	url = https://github.com/ObiWahn/libobi-python.git

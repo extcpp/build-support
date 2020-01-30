@@ -1,0 +1,45 @@
+#!/bin/bash
+set -u
+
+ferr(){
+    echo "$*"
+    exit 1
+}
+
+project_root=${project_root:-$1}
+support_dir=${2:-""}
+
+if readlink -f . 2>/dev/null; then
+    project_root="$(readlink -f -s $project_root)"
+    if [[ -z "$support_dir" ]]; then
+        support_dir="$(realpath -s "$(dirname "$(readlink -s -f "${BASH_SOURCE[0]}")")")"
+    fi
+fi
+
+echo "setting up support for '$project_root'"
+echo "support files are in '$support_dir'"
+
+[[ -z "$project_root" ]] && ferr "no project_root specified"
+[[ -f "$project_root/CMakeLists.txt" ]] || ferr "given project_root is not valid"
+[[ -z "$support_dir" ]] && ferr "no support_dir specified"
+[[ -d "$support_dir/lib/bash_build_scripts" ]] || ferr "given support_dir is not valid"
+
+[[ -L "$project_root/support" ]] || \
+    ln -s "$support_dir" "$project_root/support"
+[[ -L "$project_root/current-build-dir" ]] || \
+    ln -s "$project_root-build/current" "$project_root/current-build-dir"
+
+cat <<-end-of-file >"$project_root/build"
+	#!/bin/bash
+	project_root="${project_root:-"$(realpath -s "$(dirname "$(readlink -s -f "${BASH_SOURCE[0]}")")")"}"
+
+	if [[ -f ".build_conf" ]]; then
+	    echo "sourceing custom .build_conf"
+	        . .build_conf
+	fi
+
+    export project_root="${project_root}"
+	"${project_root}/support/scripts/build" "\$@"
+end-of-file
+
+chmod 755 "$project_root/build"
