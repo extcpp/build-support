@@ -10,8 +10,8 @@ if sys.version_info[0] < 3 or sys.version_info[1] < 7:
         raise Exception("Must be using Python 3.7")
 
 project_dir = Path(os.getcwd())
-python_dir = Path(__file__).parent.resolve()
-modules_dir = python_dir.joinpath("python_modules")
+support_dir = Path(__file__).parent.parent.resolve()
+modules_dir = support_dir.joinpath("lib", "python_modules")
 
 #add modules dir
 sys.path.insert(0,str(modules_dir))

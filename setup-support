@@ -38,7 +38,7 @@ cat <<-end-of-file >"$project_root/build"
 	        . .build_conf
 	fi
 
-    export project_root="${project_root}"
+	export project_root="${project_root}"
 	"${project_root}/support/scripts/build" "\$@"
 end-of-file
 
