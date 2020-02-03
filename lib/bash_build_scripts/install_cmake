@@ -1,9 +1,9 @@
 #!/bin/bash
 
-major="3.11"
-minor="2"
+major="3.16"
+minor="3"
 version="$major.$minor"
-required_version="3.11"
+required_version="3.12"
 file="cmake-$version-Linux-x86_64.sh"
 
 project_root=${project_root:-..}
