@@ -14,6 +14,7 @@ build_type="release"
 just_make=false
 do_clean=false
 do_test=false
+do_build=true
 asan=false
 build_prefix="<> "
 rpath=
@@ -63,6 +64,10 @@ while [[ -n "$1" ]]; do
     ;;
     -bt|--build-tests)
       cm_flags+=( "$cmake_var_tests" )
+      shift
+    ;;
+    -nb|--no-build)
+      do_build=false
       shift
     ;;
     -e|--examples)
@@ -184,6 +189,8 @@ export generator
 if ! $just_make || ! [[ -f makefile && -f Makefile ]]; then
   "$bash_build_scripts/configure" "${cm_flags[@]}" "${args[@]}" || exit $?
 fi
+
+$do_build || exit 0
 
 # runs the actual build step - e.g. make
 "$bash_build_scripts/build" || exit $?
