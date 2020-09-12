@@ -1,9 +1,9 @@
 #!/bin/bash
 
-major="3.16"
-minor="3"
+major="3.18"
+minor="0"
 version="$major.$minor"
-required_version="3.12"
+required_version="3.14"
 file="cmake-$version-Linux-x86_64.sh"
 
 project_root=${project_root:-..}
@@ -27,7 +27,7 @@ get_and_install(){
     }
     trap finish EXIT
 
-    wget -P "$obi_cmake_tmp_dir" "https://cmake.org/files/v${major}/${file}"
+    wget -P "$obi_cmake_tmp_dir" "https://cmake.org/files/v${major}/${file}" || ferr "failed to download cmake"
     chmod +x "$obi_cmake_tmp_dir/$file"
     "$obi_cmake_tmp_dir/$file" --prefix="${install_root}" --exclude-subdir --skip-license
 }
@@ -36,7 +36,7 @@ main(){
     #prepare
     section "install cmake"
 
-    local install_dir="$(get_parent_dir "$(get_source_dir)")-build/install"
+    local install_dir="$build_base/install"
     install_root="${install_root:-${install_dir}}"
 
     # check if installed

@@ -16,7 +16,7 @@ section "install external libs"
 cd "$project_root" || exit 1
 # cd external_libs || { echo "no libs to install"; exit 0; }
 
-git submodule update --init --recursive
+git submodule update --init --recursive || exit 0
 
 # #command
 # # init_libs    - first stage to get libobi

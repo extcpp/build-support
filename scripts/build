@@ -183,6 +183,7 @@ export generator
 ## build prepared
 
 "$bash_build_scripts/var_info" || exit $?
+"$bash_build_scripts/install_cmake" || exit $?
 "$bash_build_scripts/install_3rd_party" || exit $?
 
 # calls configure step - e.g. cmake
