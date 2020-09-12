@@ -17,6 +17,13 @@ if [[ -n "$RPATH" ]]; then
 fi
 
 #prepare
+
+ext_cmake_file=${project_root}/../cmake/ext_cmake_enable.cmake
+if [[ -e ${ext_cmake_file} ]]; then
+    echo updating ext_cmake_enable.cmake
+    rsync -avh ${ext_cmake_file} .
+fi
+
 section "running cmake"
 cd $build_root || ferr "failed to change into build dir"
 #command
