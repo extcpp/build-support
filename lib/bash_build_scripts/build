@@ -12,12 +12,16 @@ fi
 
 #prepare
 section "running make"
-cd $build_root || ferr "failed to change into build dir"
+cd "$build_root" || ferr "failed to change into build dir"
 #command
-if [[ $generator == "ninja" ]]; then
-    ninja
+if [[ "$generator" == "ninja" ]]; then
+    # https://github.com/ninja-build/ninja/commit/bf7107bb864d0383028202e3f4a4228c02302961
+    CLICOLOR_FORCE=1 ninja |& tee >(sed $'s/\033[[][^A-Za-z]*[A-Za-z]//g' > compile.log)
+    exit_status="${PIPESTATUS[0]}"
 else
-    make -j $(nproc) || ferr "running make - failed" $?
+    make -j "$(nproc)" | tee compile.log
+    exit_status="${PIPESTATUS[0]}"
 fi
 #end
 echo
+exit "$exit_status"

@@ -26,8 +26,8 @@ echo "support files are in '$support_dir'"
 
 [[ -L "$project_root/support" ]] || \
     ln -s "$support_dir" "$project_root/support"
-[[ -L "$project_root/current-build-dir" ]] || \
-    ln -s "$project_root-build/current" "$project_root/current-build-dir"
+[[ -L "$project_root/build_dir" ]] || \
+    ln -s "$project_root-build/current" "$project_root/build_dir"
 
 cat <<-end-of-file >"$project_root/build"
 	#!/bin/bash

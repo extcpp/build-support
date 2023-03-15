@@ -83,18 +83,13 @@ while [[ -n "$1" ]]; do
       export CC=gcc
       shift
     ;;
-    --gcc-7)
-      export CXX=g++-7
-      export CC=gcc-7
-      shift
-    ;;
-    --gcc-8)
-      export CXX=g++-8
-      export CC=gcc-8
+    --gcc-12)
+      export CXX=g++-12
+      export CC=gcc-12
       shift
     ;;
     --gcc-head)
-      gcc_exe="$(readlink -e $(type gcc-head))"
+      gcc_exe="$(readlink -e "$(type gcc-head)")"
       gcc_dir="${gcc_exe%/*}/../"
       export RPATH="$gcc_dir/lib64"
       export CXX=g++-head
@@ -106,9 +101,9 @@ while [[ -n "$1" ]]; do
       export CC=clang
       shift
     ;;
-    --clang-9)
-      export CXX=clang++-9
-      export CC=clang-9
+    --clang-13)
+      export CXX=clang++-13
+      export CC=clang-13
       shift
     ;;
     --travis)
@@ -134,6 +129,10 @@ while [[ -n "$1" ]]; do
     ;;
   esac
 done
+
+if [[ "$CMAKE_GENERATOR" == Ninja ]]; then
+    generator="ninja"
+fi
 
 if [[ -n "$flags_asan" ]]; then
     export CXXFLAGS="$CXXFLAGS $flags_asan"
@@ -191,10 +190,10 @@ if ! $just_make || ! [[ -f makefile && -f Makefile ]]; then
   "$bash_build_scripts/configure" "${cm_flags[@]}" "${args[@]}" || exit $?
 fi
 
-$do_build || exit 0
+$do_build || { echo "no build requested"; exit 0 ; }
 
 # runs the actual build step - e.g. make
-"$bash_build_scripts/build" || exit $?
+"$bash_build_scripts/build" || ferr "the build step failed" $?
 
 # runs unit tests
 "$bash_build_scripts/test" $do_test || exit $?
