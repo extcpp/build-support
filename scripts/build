@@ -34,6 +34,8 @@ function main(){
 section "parse arguments"
 args=()
 cm_flags=()
+cm_flags+=( ${cmake_var_userflags[*]} )
+
 while [[ -n "$1" ]]; do
   case "$1" in
     -j|--just-make)
