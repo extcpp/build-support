@@ -9,8 +9,9 @@ cmake_var_examples="${cmake_var_examples:-"-DLIBEXT_EXAMPLES=ON"}"
 # these variables are deduced automatically
 build_base="${project_root}-build"
 export PATH="$build_base/install/bin:$PATH"
+export CMAKE_EXPORT_COMPILE_COMMANDS="ON"
 
-build_type="release"
+build_type="relwithdebinfo"
 just_make=false
 do_clean=false
 do_test=false
@@ -151,7 +152,7 @@ case $build_type in
   debug)
     cm_flags+=( '-DCMAKE_BUILD_TYPE=Debug' )
   ;;
-  relwithdeb)
+  relwithdebinfo)
     cm_flags+=( '-DCMAKE_BUILD_TYPE=RelWithDebInfo' )
   ;;
   *)
