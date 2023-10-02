@@ -1,0 +1,10 @@
+#!/bin/bash
+
+echo "set(ext-basics-header"
+while read -r  line; do
+    printf  "\t\"%s\"\n" "$line"
+done < <(find * -maxdepth 2 -iname '*.hpp' | sort)
+while read -r  line; do
+    printf  "\t\"%s\"\n" "$line"
+done < <(find * -mindepth 3 -iname '*.hpp' | sort)
+echo ")"
