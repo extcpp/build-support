@@ -5,11 +5,11 @@ import re
 from subprocess import Popen, PIPE, STDOUT
 from pathlib import Path
 
-def find_clang_format(version = None):
+
+def find_clang_format(version=None):
     candidates = [
-        "clang-format-ext",
-        "clang-format-9",
-        "clang-format"
+        "clang-format-14",
+        "clang-format-15",
     ]
 
     for candidate in candidates:
@@ -17,21 +17,25 @@ def find_clang_format(version = None):
         phandle = None
         try:
             phandle = Popen(
-                [ candidate_path, '--version', ],
-                stdout = PIPE, stderr = STDOUT,
-                universal_newlines=True
+                [
+                    candidate_path,
+                    "--version",
+                ],
+                stdout=PIPE,
+                stderr=STDOUT,
+                universal_newlines=True,
             )
-        except FileNotFoundError as e:
-            continue
+        except FileNotFoundError:
+            pass
 
         version_re = re.compile("version {}".format(version))
 
         stdout = []
-        while phandle.poll() == None:
-            out_err = phandle.communicate(timeout = 1)
-            stdout += [ out_err[0] ]
+        while phandle.poll() is None:
+            out_err = phandle.communicate(timeout=1)
+            stdout += [out_err[0]]
 
-        out=" ".join(stdout).replace('\n', ' ')
+        out = " ".join(stdout).replace("\n", " ")
         if phandle.returncode == 0:
             match = version_re.search(out)
             if match:

@@ -5,19 +5,18 @@ import sys
 import os
 from pathlib import Path
 
-import sys
 if sys.version_info[0] < 3 or sys.version_info[1] < 7:
-        raise Exception("Must be using Python 3.7")
+    raise Exception("Must be using Python 3.7")
 
 project_dir = Path(os.getcwd())
 support_dir = Path(__file__).parent.parent.resolve()
 modules_dir = support_dir.joinpath("lib", "python_modules")
 
-#add modules dir
-sys.path.insert(0,str(modules_dir))
+# add modules dir
+sys.path.insert(0, str(modules_dir))
 
-from codecheck.walk import check_modify_source;
-from codecheck.state import StateAndConfiguration
+from codecheck.walk import check_modify_source  # noqa: E402
+from codecheck.state import StateAndConfiguration  # noqa: E402
 
 if __name__ == "__main__":
     """
@@ -34,15 +33,16 @@ if __name__ == "__main__":
     if debug:
         conf = state_and_conf.configuration
 
-        #conf.fix_include_guards = None
-        #conf.fix_copyright = None
-        #conf.fix_ifdef = None
+        # conf.fix_include_guards = None
+        # conf.fix_copyright = None
+        # conf.fix_ifdef = None
 
         conf.create_operation_list()
 
-    rv = check_modify_source(["include", "examples", "tests"] #dirs to include
-                            ,[] #dirs and files to exclude (does not purge the dir)
-                            ,state_and_conf
-                            )
+    rv = check_modify_source(
+        ["include", "examples", "tests"],  # dirs to include
+        [],  # dirs and files to exclude (does not purge the dir)
+        state_and_conf,
+    )
 
     sys.exit(rv)

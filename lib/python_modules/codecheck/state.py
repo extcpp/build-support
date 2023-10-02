@@ -1,15 +1,12 @@
-import sys
-import os
-
+#!/usr/bin/python3
 from .common import AccessType
 
 from .include_guards import IncludeGuard
 from .copyright import Copyright
 from .ifdef import IfDef
 
-from enum import Enum
 
-class Configuration():
+class Configuration:
     def __init__(self, project_root, check_only):
         access = AccessType.READ
         if not check_only:
@@ -30,10 +27,11 @@ class Configuration():
         if self.fix_ifdef:
             self.operations.append(IfDef(self.fix_ifdef))
 
-class StateAndConfiguration():
+
+class StateAndConfiguration:
     def __init__(self, project_root, check_only):
         self.configuration = Configuration(project_root, check_only)
-        self.state = dict() #map { name_of_operation : some_state }
+        self.state = dict()  # map { name_of_operation : some_state }
         self.reset()
 
     def reset(self):

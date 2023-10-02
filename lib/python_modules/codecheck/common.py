@@ -1,16 +1,15 @@
-import sys
-import os
-from typing import Dict, Tuple, Sequence, List, IO
+#!/usr/bin/python3
 from enum import Enum
 from pathlib import Path
-
-from obi.util.path_helper import remove_from_front, change_ext
+from typing import IO
 
 from . import logger as log
+
 
 class AccessType(Enum):
     READ = 1
     MODIFY = 2
+
 
 class Status(Enum):
     OK = 0
@@ -26,13 +25,12 @@ class Status(Enum):
         return status in (Status.OK, Status.OK_REPLACED, Status.OK_SKIP_FILE, Status.OK_SKIP_LINEWISE_ACCESS)
 
     @classmethod
-    def is_done(cls, status, linewise = False):
+    def is_done(cls, status, linewise=False):
         cls.check(status)
         if linewise:
             return status == Status.OK_SKIP_LINEWISE_ACCESS
         else:
             return status in (Status.OK_REPLACED, Status.OK_SKIP_FILE, Status.FAIL_FATAL, Status.FAIL_FATAL)
-
 
     @classmethod
     def good_to_ok(cls, status):
@@ -44,34 +42,35 @@ class Status(Enum):
 
     @classmethod
     def check(cls, status):
-        if status == None:
+        if status is None:
             raise ValueError("status can not be None")
 
-class OperationState():
+
+class OperationState:
     def __init__(self, access):
         self.access = list(access)
 
-class Operation():
+
+class Operation:
     def __init__(self, op_type, name):
         log.info("create {} with {}".format(name, op_type))
         self.name = name
         self.dry_run = True
         self.do_log = False
         self.do_log_detail = False
-        self.access = [  ]
+        self.access = []
 
-        if op_type == None:
+        if op_type is None:
             pass
         elif op_type == AccessType.MODIFY:
-            self.access.append( AccessType.MODIFY )
-            self.access.append( AccessType.READ )
+            self.access.append(AccessType.MODIFY)
+            self.access.append(AccessType.READ)
         elif op_type == AccessType.READ:
-            self.access.append( AccessType.READ )
+            self.access.append(AccessType.READ)
 
     def do_line(self, line, cnt, full_path: Path, project_path: Path, target_file_handle: IO, state):
         if self.do_log_detail:
-            l = log.info
-            l("{} {}".format(cnt,line))
+            log.info("{} {}".format(cnt, line))
 
         if target_file_handle:
             return self.modify_line(line, cnt, full_path, project_path, target_file_handle, state)
@@ -80,9 +79,8 @@ class Operation():
 
     def do(self, full_path: Path, project_path: Path, target_file_handle: IO, state):
         if self.do_log:
-            l = log.info
-            l("{}".format(self.name))
-            l("{}".format(project_path))
+            log.info("{}".format(self.name))
+            log.info("{}".format(project_path))
 
         if target_file_handle:
             return self.modify(full_path, project_path, target_file_handle, state)

@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 
 find_clang_format() {
-    readonly local clang_format_version="${EXT_CLANG_FORMAT_VERSION:-"9.0"}"
+    readonly local clang_format_version="${EXT_CLANG_FORMAT_VERSION:-"14.0"}"
     readonly local version_check_re=".*version ${clang_format_version}.*"
 
     readonly local locations=(
         "${EXT_CLANG_FORMAT:=}"
         "$HOME/.local/bin/clang-format"
+        "clang-format-14"
         "clang-format-ext"
-        "clang-format-9"
         "clang-format"
     )
     echo "locs ${locations[@]}"
