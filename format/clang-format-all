@@ -23,7 +23,7 @@ def create_action_format():
         sys.exit(1)
 
     def action(path: Path):
-        command = [clang_format, "-style=file", "-i", str(path)]
+        command = [clang_format, "--verbose", "-style=file", "-i", str(path)]
 
         logger.debug(command)
         Popen(command).wait()
@@ -43,5 +43,6 @@ if __name__ == "__main__":
             project_dir,
             create_action_format(),
             filter_cpp,
-            create_filter_path(Path(project_dir, "include"), Path(project_dir, "tests"), Path(project_dir, "examples")),
+            #create_filter_path(Path(project_dir, "include"), Path(project_dir, "tests"), Path(project_dir, "examples")),
+            create_filter_path(project_dir),
         )
