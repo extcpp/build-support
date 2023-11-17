@@ -4,8 +4,9 @@ import re
 from . import logger as log
 from .common import Operation, OperationState, Status, Access
 
+g_nofix_re = re.compile(r"//.*HDR_NOFIX")
 g_copy_re = re.compile(r"//.*Copyright.*Jan Christoph Uhde")
-g_copy_exact_re = re.compile(r"// Copyright - (20\d{2}(-20\d{2})?) - Jan Christoph Uhde <Jan@UhdeJC.com>")
+g_copy_exact_re = re.compile(r"// Copyright - ((20\d{2}|xxxx)(-20\d{2})?) - Jan Christoph Uhde <Jan@UhdeJC.com>")
 g_copy_format = (
     "// Copyright - {} - Jan Christoph Uhde <Jan@UhdeJC.com>\n"
     + "// Please see LICENSE.md for license or visit https://github.com/extcpp/basics\n"
@@ -31,10 +32,13 @@ class Copyright(Operation):
 
     def read_file(self, state: OperationState) -> Status:
         state.line_for_copyright = 0
-        state.insert_new = True  # else fix old
+        state.insert_new = True  # fix old if set to False
         return Status.OK
 
     def read_line(self, state: OperationState):
+        if g_nofix_re.search(state.line_content):
+            state.access = []
+            return Status.OK_SKIP_FILE
         if g_copy_re.search(state.line_content):
             state.line_for_copyright = state.line_num
             state.insert_new = False
