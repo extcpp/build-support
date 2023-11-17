@@ -6,34 +6,35 @@ from typing import IO
 from . import logger as log
 
 
-class AccessType(Enum):
-    READ = 1
-    MODIFY = 2
-
-
 class Status(Enum):
     OK = 0
-    OK_REPLACED = 1
-    OK_SKIP_FILE = 2
+    OK_REPLACE = 1  # file was repaced
+    OK_SKIP_FILE = 2  # file can be skipped
     OK_SKIP_LINEWISE_ACCESS = 3
-    FAIL = 4
-    FAIL_FATAL = 5
+    FAIL = 4  # failure
+    FAIL_FATAL = 5  # failure forcing exit
+
+    def __int__(self):
+        return self.value
 
     @classmethod
     def is_good(cls, status):
         cls.check(status)
-        return status in (Status.OK, Status.OK_REPLACED, Status.OK_SKIP_FILE, Status.OK_SKIP_LINEWISE_ACCESS)
+        return status in (Status.OK, Status.OK_REPLACE, Status.OK_SKIP_FILE, Status.OK_SKIP_LINEWISE_ACCESS)
 
     @classmethod
     def is_done(cls, status, linewise=False):
+        """check if ths status indicates that the work with the file is done"""
         cls.check(status)
         if linewise:
             return status == Status.OK_SKIP_LINEWISE_ACCESS
+            #  return status in (Status.OK, Status.OK_SKIP_LINEWISE_ACCESS)
         else:
-            return status in (Status.OK_REPLACED, Status.OK_SKIP_FILE, Status.FAIL_FATAL, Status.FAIL_FATAL)
+            return status in (Status.OK_REPLACE, Status.OK_SKIP_FILE, Status.FAIL_FATAL, Status.FAIL_FATAL)
 
     @classmethod
-    def good_to_ok(cls, status):
+    def to_simple_ok(cls, status):
+        """convert any good status to a plain Status.OK"""
         cls.check(status)
         if cls.is_good(status):
             return Status.OK
@@ -42,51 +43,82 @@ class Status(Enum):
 
     @classmethod
     def check(cls, status):
+        assert status.name
         if status is None:
             raise ValueError("status can not be None")
 
 
+class Access(Enum):
+    READ = 1
+    MODIFY = 2
+
+
 class OperationState:
+    """This is a basic state/context for operationo. Operations can use it to
+    store information and to request further acesses by modifying the acesss
+    list.
+    """
+
+    project_path: Path
+    file_path: Path
+    file_handle: IO
+    line_content: str
+
+    def reset_for_next_pass(self):
+        self.project_path = None
+        self.file_path = None
+        self.replacement_file_handle = None
+        self.line_num = None
+        self.line_content = None
+
     def __init__(self, access):
         self.access = list(access)
+        self.reset_for_next_pass()
 
 
 class Operation:
-    def __init__(self, op_type, name):
-        log.info("create {} with {}".format(name, op_type))
+    """An Operation proesses a file. It can consist of serveral read and wirte
+    acesses. The most basic operation is a verifaction that uses just one read
+    access. More complex operations may use serveral read and write accesses to
+    gather information, modify the file, and do a final verifaction.
+    """
+
+    def __init__(self, name: str, access: Access):
+        log.info("create {} with {}".format(name, access))
         self.name = name
         self.dry_run = True
         self.do_log = False
         self.do_log_detail = False
+        # a list that contains the pending accesses
+        # access are worked on in list order
         self.access = []
 
-        if op_type is None:
+        if access is None:
             pass
-        elif op_type == AccessType.MODIFY:
-            self.access.append(AccessType.MODIFY)
-            self.access.append(AccessType.READ)
-        elif op_type == AccessType.READ:
-            self.access.append(AccessType.READ)
+        elif access == Access.MODIFY:
+            self.access.append(Access.READ)
+            self.access.append(Access.MODIFY)
+        elif access == Access.READ:
+            self.access.append(Access.READ)
 
-    def do_line(self, line, cnt, full_path: Path, project_path: Path, target_file_handle: IO, state):
+    def access_line(self, state: OperationState):
         if self.do_log_detail:
-            log.info("{} {}".format(cnt, line))
+            log.info("{} {}".format(state.line_num, state.line_content))
 
-        if target_file_handle:
-            return self.modify_line(line, cnt, full_path, project_path, target_file_handle, state)
+        if state.replacement_file_handle:
+            return self.modify_line(state)
         else:
-            return self.check_line(line, cnt, full_path, project_path, state)
+            return self.read_line(state)
 
-    def do(self, full_path: Path, project_path: Path, target_file_handle: IO, state):
+    def access_file(self, state):
         if self.do_log:
             log.info("{}".format(self.name))
-            log.info("{}".format(project_path))
+            log.info("{}".format(state.project_path))
 
-        if target_file_handle:
-            return self.modify(full_path, project_path, target_file_handle, state)
+        if state.replacement_file_handle:
+            return self.modify_file(state)
         else:
-            return self.check(full_path, project_path, state)
+            return self.read_file(state)
 
     def new_state(self):
-        state = self.State(self.access)
-        return state
+        return self.create_state(self.access)

@@ -1,7 +1,5 @@
 #!/usr/bin/python3
 import re
-from pathlib import Path
-from typing import IO
 
 from obi.util.path import remove_from_front, change_ext
 from . import logger as log
@@ -17,48 +15,43 @@ class IncludeGuardState(OperationState):
 
 class IncludeGuard(Operation):
     def __init__(self, op):
-        super(IncludeGuard, self).__init__(op, "IncludeGuard")
+        super(IncludeGuard, self).__init__("IncludeGuard", op)
         self.dry_run = False
         self.file_types = (".h", ".hpp")  # must be tuple
         self.do_log = False
         self.mark_start = True
 
     @classmethod
-    def State(cls, *args, **kwags):
+    def create_state(cls, *args, **kwags):
         return IncludeGuardState(*args, **kwags)
 
-    # def do_line(self, line, cnt, full_path, project_path, target_file_handle, state)
-    # def do(self, full_path, project_path, target_file_handle, state)
-
-    def check(self, full_path: Path, project_path: Path, state: OperationState) -> Status:
+    def read_file(self, state: OperationState) -> Status:
         state.line_for_infdef = 0
         state.starting = True
         state.insert_new = True  # else fix old
 
         # hpp h to header
-        path = project_path
+        path = state.project_path
         if path.parts[1] == "ext":
-            path = remove_from_front(project_path, "include")
+            path = remove_from_front(state.project_path, "include")
         path = change_ext(path, "_HEADER")
-        guard = "_".join(path.parts).upper()
-        state.guard = guard
-
+        state.guard = "_".join(path.parts).upper()
         return Status.OK
 
-    def check_line(self, line: str, cnt, full_path: Path, project_path: Path, state: OperationState):
-        if state.starting and (line.startswith("//") or line == "\n"):
-            state.line_for_infdef = cnt
+    def read_line(self, state: OperationState):
+        if state.starting and (state.line_content.startswith("//") or state.line_content == "\n"):
+            state.line_for_infdef = state.line_num
         else:
             state.starting = False
 
-        if line.startswith("#"):
-            if line.startswith("#pragma once") and state.insert_new:
-                state.line_for_infdef = cnt  # insert after prama once
+        if state.line_content.startswith("#"):
+            if state.line_content.startswith("#pragma once") and state.insert_new:
+                state.line_for_infdef = state.line_num  # insert after prama once
 
-            match = g_guard_re.search(line)
+            match = g_guard_re.search(state.line_content)
 
             if match:
-                state.line_for_infdef = cnt
+                state.line_for_infdef = state.line_num
                 if match["guard"] == state.guard:
                     state.access = []
                     return Status.OK_SKIP_FILE
@@ -68,37 +61,35 @@ class IncludeGuard(Operation):
 
         return Status.OK
 
-    def modify(self, full_path: Path, project_path: Path, target_file_handle: IO, state: OperationState):
+    def modify_file(self, OperationState):
         return Status.OK
 
-    def modify_line(
-        self, line: str, cnt, full_path: Path, project_path: Path, target_file_handle: IO, state: IncludeGuardState
-    ):
-        out = target_file_handle
+    def modify_line(self, state: IncludeGuardState):
+        out = state.replacement_file_handle
 
         # insert new
         if state.insert_new:
-            if state.line_for_infdef == cnt:
+            if state.line_for_infdef == state.line_num:
                 log.info("insert new gurad in")
-                out.write(line)
+                out.write(state.line_content)
                 out.write("#ifndef {}\n".format(state.guard))
                 out.write("#define {}\n".format(state.guard))
                 return Status.OK
-            elif cnt == "EOF":
+            elif state.line_num == "EOF":
                 out.write("#endif // {}".format(state.guard))
-                return Status.OK_REPLACED
+                return Status.OK_REPLACE
 
         # fix old
         if not state.insert_new:
-            if state.line_for_infdef == cnt:
+            if state.line_for_infdef == state.line_num:
                 out.write("#ifndef {}\n".format(state.guard))
                 out.write("#define {}\n".format(state.guard))
                 return Status.OK
-            elif state.line_for_infdef + 1 == cnt:
+            elif state.line_for_infdef + 1 == state.line_num:
                 return Status.OK
-            elif cnt == "EOF":
-                return Status.OK_REPLACED
+            elif state.line_num == "EOF":
+                return Status.OK_REPLACE
 
         # just copy rest of file
-        out.write(line)
+        out.write(state.line_content)
         return Status.OK

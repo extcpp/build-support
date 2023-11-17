@@ -1,10 +1,8 @@
 #!/usr/bin/python3
 import re
-from pathlib import Path
-from typing import IO
 
 from . import logger as log
-from .common import Operation, OperationState, Status
+from .common import Operation, OperationState, Status, Access
 
 g_copy_re = re.compile(r"//.*Copyright.*Jan Christoph Uhde")
 g_copy_exact_re = re.compile(r"// Copyright - (20\d{2}(-20\d{2})?) - Jan Christoph Uhde <Jan@UhdeJC.com>")
@@ -15,36 +13,33 @@ g_copy_format = (
 
 
 class CopyrightState(OperationState):
-    def __init__(self, access):
-        super(CopyrightState, self).__init__(access)  # creates a copy of access
+    def __init__(self, access: Access):
+        super(CopyrightState, self).__init__(access)
 
 
 class Copyright(Operation):
     def __init__(self, op):
-        super(Copyright, self).__init__(op, "Copyright")
+        super(Copyright, self).__init__("Copyright", op)
         self.dry_run = False
         self.file_types = (".h", ".hpp", ".c", ".cpp", ".cc")  # must be tuple
         self.do_log = False
         self.mark_start = True
 
     @classmethod
-    def State(cls, *args, **kwags):
+    def create_state(cls, *args, **kwags):
         return CopyrightState(*args, **kwags)
 
-    # def do_line(self, line, cnt, full_path, project_path, target_file_handle, state)
-    # def do(self, full_path, project_path, target_file_handle, state)
-
-    def check(self, full_path: Path, project_path: Path, state: OperationState) -> Status:
+    def read_file(self, state: OperationState) -> Status:
         state.line_for_copyright = 0
         state.insert_new = True  # else fix old
         return Status.OK
 
-    def check_line(self, line: str, cnt, full_path: Path, project_path: Path, state: OperationState):
-        if g_copy_re.search(line):
-            state.line_for_copyright = cnt
+    def read_line(self, state: OperationState):
+        if g_copy_re.search(state.line_content):
+            state.line_for_copyright = state.line_num
             state.insert_new = False
 
-            if g_copy_exact_re.match(line):
+            if g_copy_exact_re.match(state.line_content):
                 state.access = []
                 return Status.OK_SKIP_FILE
             else:
@@ -52,32 +47,30 @@ class Copyright(Operation):
 
         return Status.OK
 
-    def modify(self, full_path: Path, project_path: Path, target_file_handle: IO, state: OperationState):
-        out = target_file_handle
+    def modify_file(self, state: OperationState):
+        out = state.replacement_file_handle
         if state.insert_new:
             log.info("insert {}".format(str(state.insert_new)))
-            out.write(g_copy_format.format("2020"))
+            out.write(g_copy_format.format("2023"))
 
-            with open(full_path, "r") as infile:
+            with open(state.file_path, "r") as infile:
                 out.write(infile.read())
 
-            return Status.OK_REPLACED
+            return Status.OK_REPLACE
 
         return Status.OK
 
-    def modify_line(
-        self, line: str, cnt, full_path: Path, project_path: Path, target_file_handle: IO, state: CopyrightState
-    ):
+    def modify_line(self, state: CopyrightState):
         assert not state.insert_new
-        out = target_file_handle
+        out = state.replacement_file_handle
 
         # need to fix
-        if cnt == state.line_for_copyright:
+        if state.line_num == state.line_for_copyright:
             out.write(g_copy_format.format("xxxx-2020"))
             return Status.OK
-        elif cnt == "EOF":
-            return Status.OK_REPLACED
+        elif state.line_num == "EOF":
+            return Status.OK_REPLACE
 
         # just copy rest of file
-        out.write(line)
+        out.write(state.line_content)
         return Status.OK

@@ -5,17 +5,40 @@ from pathlib import Path
 from typing import IO
 
 from . import logger as log
-from codecheck.common import Status
-from codecheck.state import StateAndConfiguration, AccessType
+from codecheck.common import Status, Access, Operation, OperationState
+from codecheck.configuration import Configuration
 
 
-def handle_file(full_path: Path, state_and_config: StateAndConfiguration):
-    conf = state_and_config.configuration
+def execute_operation(
+    full_path: Path, project_path: Path, replacement_file_handle: IO, operation: Operation, state: OperationState
+) -> Status:
+
+    state.project_path = project_path
+    state.file_path = full_path
+    state.replacement_file_handle = replacement_file_handle
+
+    status = operation.access_file(state)
+    if Status.is_done(status) or not Status.is_good(status):
+        return status
+
+    with open(full_path) as source_file_handle:
+        for state.line_num, state.line_content in enumerate(source_file_handle):
+            status = operation.access_line(state)
+            if Status.is_done(status, True):  # done linewise
+                return status
+
+        if not Status.is_done(status, True):  # done linewise
+            state.line_num = "EOF"
+            state.line_content = ""
+            status = operation.access_line(state)
+
+    return status
+
+
+def handle_file(conf: Configuration, full_path: Path, operation: Operation):
     project_path = full_path.relative_to(conf.project_root)
 
     log.debug("---> " + str(full_path))
-
-    operation = state_and_config.current_operation
 
     # assert that we have path objects
     assert project_path.parts
@@ -25,29 +48,29 @@ def handle_file(full_path: Path, state_and_config: StateAndConfiguration):
     status = Status.OK
 
     while state.access:
-        access = state.access.pop()
+        access = state.access.pop(0)
 
-        if access == AccessType.MODIFY:
-            target_file = full_path.parent.joinpath(full_path.name + ".replacement")
-
+        # creates a file handle to which the operation result will be written
+        if access == Access.MODIFY:
             if operation.dry_run:
-                log.info("dryrun on target {}".format(target_file))
-                status = do_operation(full_path, project_path, sys.stdout, state_and_config, state)
+                log.info("dryrun on target {}".format(full_path))
+                status = execute_operation(full_path, project_path, sys.stdout, operation, state)
                 assert status.name
             else:
-                with open(target_file, "w") as target_file_handle:
-                    status = do_operation(full_path, project_path, target_file_handle, state_and_config, state)
+                target_file = full_path.parent.joinpath(full_path.name + ".replacement")
+                with open(target_file, "w") as replacement_file_handle:
+                    status = execute_operation(full_path, project_path, replacement_file_handle, operation, state)
                     assert status.name
 
-                if status == Status.OK_REPLACED:
+                if status == Status.OK_REPLACE:
                     log.info("replace {}".format(project_path))
                     os.rename(target_file, full_path)
                     break
                 else:
                     os.unlink(target_file)
 
-        elif access == AccessType.READ:
-            status = do_operation(full_path, project_path, None, state_and_config, state)
+        elif access == Access.READ:
+            status = execute_operation(full_path, project_path, None, operation, state)
             assert status.name
 
         else:
@@ -60,86 +83,45 @@ def handle_file(full_path: Path, state_and_config: StateAndConfiguration):
             break
 
     log.debug("<--- handle file " + status.name)
-    return Status.good_to_ok(status)
+    return Status.to_simple_ok(status)
 
 
-def do_operation(
-    full_path: Path, project_path: Path, target_file_handle: IO, state_and_config: StateAndConfiguration, state
-) -> Status:
-    assert full_path.parts
-    assert project_path.parts
-    operation = state_and_config.current_operation
+def check_modify_source(config: Configuration):
+    def to_full_path(root, path):
+        return Path(root).joinpath(path)
 
-    status = operation.do(full_path, project_path, target_file_handle, state)
-    assert status.name
+    def to_full_path_string(root, path):
+        return str(to_full_path(root, path))
 
-    if not Status.is_good(status) or Status.is_done(status):
-        return status
+    def should_include_path(root, path, include):
+        full_path = to_full_path_string(root, path)
 
-    with open(full_path) as source_file_handle:
-        for cnt, line in enumerate(source_file_handle):
-            if Status.is_done(status, True):  # done linewise
-                break
-
-            status = operation.do_line(line, cnt, full_path, project_path, target_file_handle, state)
-            assert status.name
-
-            if Status.is_done(status, True):  # done linewise
-                return status
-
-        status = operation.do_line("", "EOF", full_path, project_path, target_file_handle, state)
-        assert status.name
-
-        if status is None:
-            raise ValueError("status can not be None")
-
-    return status
-
-
-def to_full_path(root, path):
-    return Path(root).joinpath(path)
-
-
-def to_full_path_string(root, path):
-    return str(to_full_path(root, path))
-
-
-def should_include_path(root, path, include):
-    full_path = to_full_path_string(root, path)
-
-    if full_path.startswith(tuple(include)):
-        return True
-
-    for i in include:
-        if i.startswith(full_path):
+        if full_path.startswith(tuple(include)):
             return True
 
-    return False
+        for i in include:
+            if i.startswith(full_path):
+                return True
 
+        return False
 
-def check_modify_source(
-    directories_to_include, directories_or_files_to_exclude, state_and_config: StateAndConfiguration
-):
-    conf = state_and_config.configuration
-
-    log.info("project_root {}".format(conf.project_root))
+    log.info("project_root {}".format(config.project_root))
 
     # NOTE:
     # project_root and root are NOT the same
 
-    include = [str(conf.project_root.joinpath(d)) for d in directories_to_include]
-    exclude = [str(conf.project_root.joinpath(d)) for d in directories_or_files_to_exclude]
+    include = [str(config.project_root.joinpath(d)) for d in config.dirs]
+    exclude = [str(config.project_root.joinpath(d)) for d in config.dirs_to_exclude]  # or files
     log.debug("to include: {} ".format(include))
     log.debug("to exclude: {} ".format(exclude))
 
-    for operation in conf.operations:
+    for operation in config.operations:
         if not operation.access:
             continue
 
         log.info(operation.name)
-        state_and_config.current_operation = operation
 
-        for root, dirs, files in os.walk(conf.project_root):
+        for root, dirs, files in os.walk(config.project_root):
             status = Status.OK
 
             log.debug("dirs in: {} ".format(dirs))
@@ -152,16 +134,16 @@ def check_modify_source(
             for filename in files:
                 filename = Path(filename)
                 full_path = to_full_path(root, filename)
-                # full_path.parts # -- assert that we have a real pathlib Path
+                assert full_path.parts
 
                 if str(full_path) in exclude:
                     continue
 
                 if filename.suffix in operation.file_types:
-                    status = handle_file(full_path, state_and_config)
+                    status = handle_file(config, full_path, operation)
                     assert status.name
 
                 if not Status.is_good(status):
                     return status
 
-    return 0
+    return Status.OK
