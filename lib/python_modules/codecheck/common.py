@@ -8,44 +8,32 @@ from . import logger as log
 
 class Status(Enum):
     OK = 0
-    OK_REPLACE = 1  # file was repaced
-    OK_SKIP_FILE = 2  # file can be skipped
-    OK_SKIP_LINEWISE_ACCESS = 3
-    FAIL = 4  # failure
-    FAIL_FATAL = 5  # failure forcing exit
+    OK_NEXT_LINE = 1
+    OK_NEXT_ACCESS = 2
+    OK_SKIP_FILE = 3
+    OK_REPLACE = 4
+    FAIL = 5
+    FAIL_FATAL = 6
 
     def __int__(self):
         return self.value
 
-    @classmethod
-    def is_good(cls, status):
-        cls.check(status)
-        return status in (Status.OK, Status.OK_REPLACE, Status.OK_SKIP_FILE, Status.OK_SKIP_LINEWISE_ACCESS)
 
-    @classmethod
-    def is_done(cls, status, linewise=False):
-        """check if ths status indicates that the work with the file is done"""
-        cls.check(status)
-        if linewise:
-            return status == Status.OK_SKIP_LINEWISE_ACCESS
-            #  return status in (Status.OK, Status.OK_SKIP_LINEWISE_ACCESS)
-        else:
-            return status in (Status.OK_REPLACE, Status.OK_SKIP_FILE, Status.FAIL_FATAL, Status.FAIL_FATAL)
+def is_good(status: Status):
+    return status in (Status.OK, Status.OK_NEXT_LINE, Status.OK_NEXT_ACCESS, Status.OK_SKIP_FILE, Status.OK_REPLACE)
 
-    @classmethod
-    def to_simple_ok(cls, status):
-        """convert any good status to a plain Status.OK"""
-        cls.check(status)
-        if cls.is_good(status):
-            return Status.OK
-        else:
-            return status
 
-    @classmethod
-    def check(cls, status):
-        assert status.name
-        if status is None:
-            raise ValueError("status can not be None")
+def is_done(status: Status):
+    """check if ths status indicates that the work with the file is done"""
+    return status in (Status.OK_REPLACE, Status.OK_SKIP_FILE, Status.FAIL_FATAL)
+
+
+def to_simple_ok(status: Status):
+    """convert any good status to a plain Status.OK"""
+    if is_good(status):
+        return Status.OK
+    else:
+        return status
 
 
 class Access(Enum):

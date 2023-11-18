@@ -46,7 +46,7 @@ class IncludeGuard(Operation):
 
         if state.line_content.startswith("#"):
             if state.line_content.startswith("#pragma once") and state.insert_new:
-                state.line_for_infdef = state.line_num  # insert after prama once
+                state.line_for_infdef = state.line_num
 
             match = g_guard_re.search(state.line_content)
 
@@ -56,10 +56,10 @@ class IncludeGuard(Operation):
                     state.access = []
                     return Status.OK_SKIP_FILE
                 else:
-                    state.insert_new = False  # do not insert but fix
-                    return Status.OK_SKIP_LINEWISE_ACCESS
+                    state.insert_new = False
+                    return Status.OK_NEXT_ACCESS
 
-        return Status.OK
+        return Status.OK_NEXT_LINE
 
     def modify_file(self, OperationState):
         return Status.OK
@@ -92,4 +92,4 @@ class IncludeGuard(Operation):
 
         # just copy rest of file
         out.write(state.line_content)
-        return Status.OK
+        return Status.OK_NEXT_LINE

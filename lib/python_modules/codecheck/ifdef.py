@@ -33,7 +33,7 @@ class IfDef(Operation):
         match = g_ifdef_re.match(state.line_content)
         if match:
             state.stack.append((state.line_num, match["if_value"]))
-            return Status.OK
+            return Status.OK_NEXT_LINE
 
         match = g_endif_re.match(state.line_content)
         if match:
@@ -45,7 +45,7 @@ class IfDef(Operation):
             if target_endif_value is not state.line_content:
                 state.replacements.append((state.line_num, target_endif_value))
 
-        return Status.OK
+        return Status.OK_NEXT_LINE
 
     def modify_file(self, state: OperationState):
         if not state.replacements:
@@ -64,7 +64,7 @@ class IfDef(Operation):
                 if pair[0] == state.line_num:
                     out.write(pair[1])
                     state.replacements.pop()
-                    return Status.OK
+                    return Status.OK_NEXT_LINE
 
         out.write(state.line_content)
-        return Status.OK
+        return Status.OK_NEXT_LINE

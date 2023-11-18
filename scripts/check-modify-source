@@ -29,5 +29,5 @@ if __name__ == "__main__":
 
     # run
     ctx = Configuration(project_dir, modify, dirs, dirs_to_exclude)
-    status = Status.to_simple_ok(check_modify_source(ctx))
+    status = check_modify_source(ctx)
     sys.exit(int(status))

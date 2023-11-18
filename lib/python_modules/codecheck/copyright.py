@@ -37,19 +37,17 @@ class Copyright(Operation):
 
     def read_line(self, state: OperationState):
         if g_nofix_re.search(state.line_content):
-            state.access = []
             return Status.OK_SKIP_FILE
         if g_copy_re.search(state.line_content):
             state.line_for_copyright = state.line_num
             state.insert_new = False
 
             if g_copy_exact_re.match(state.line_content):
-                state.access = []
                 return Status.OK_SKIP_FILE
-            else:
-                return Status.OK_SKIP_LINEWISE_ACCESS
 
-        return Status.OK
+            return Status.OK_NEXT_ACCESS
+
+        return Status.OK_NEXT_LINE
 
     def modify_file(self, state: OperationState):
         out = state.replacement_file_handle
@@ -71,10 +69,10 @@ class Copyright(Operation):
         # need to fix
         if state.line_num == state.line_for_copyright:
             out.write(g_copy_format.format("xxxx-2020"))
-            return Status.OK
+            return Status.OK_NEXT_LINE
         elif state.line_num == "EOF":
             return Status.OK_REPLACE
 
         # just copy rest of file
         out.write(state.line_content)
-        return Status.OK
+        return Status.OK_NEXT_LINE

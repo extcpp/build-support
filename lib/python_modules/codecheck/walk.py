@@ -5,29 +5,28 @@ from pathlib import Path
 from typing import IO
 
 from . import logger as log
-from codecheck.common import Status, Access, Operation, OperationState
+from codecheck.common import Status, Access, Operation, OperationState, to_simple_ok, is_done, is_good
 from codecheck.configuration import Configuration
 
 
 def execute_operation(
     full_path: Path, project_path: Path, replacement_file_handle: IO, operation: Operation, state: OperationState
 ) -> Status:
-
     state.project_path = project_path
     state.file_path = full_path
     state.replacement_file_handle = replacement_file_handle
 
     status = operation.access_file(state)
-    if Status.is_done(status) or not Status.is_good(status):
+    if is_done(status) or not is_good(status):
         return status
 
     with open(full_path) as source_file_handle:
         for state.line_num, state.line_content in enumerate(source_file_handle):
             status = operation.access_line(state)
-            if Status.is_done(status, True):  # done linewise
+            if is_done(status):
                 return status
 
-        if not Status.is_done(status, True):  # done linewise
+        if not is_done(status):
             state.line_num = "EOF"
             state.line_content = ""
             status = operation.access_line(state)
@@ -45,7 +44,7 @@ def handle_file(conf: Configuration, full_path: Path, operation: Operation):
     assert full_path.parts
 
     state = operation.new_state()
-    status = Status.OK
+    status = None
 
     while state.access:
         access = state.access.pop(0)
@@ -60,7 +59,6 @@ def handle_file(conf: Configuration, full_path: Path, operation: Operation):
                 target_file = full_path.parent.joinpath(full_path.name + ".replacement")
                 with open(target_file, "w") as replacement_file_handle:
                     status = execute_operation(full_path, project_path, replacement_file_handle, operation, state)
-                    assert status.name
 
                 if status == Status.OK_REPLACE:
                     log.info("replace {}".format(project_path))
@@ -71,19 +69,15 @@ def handle_file(conf: Configuration, full_path: Path, operation: Operation):
 
         elif access == Access.READ:
             status = execute_operation(full_path, project_path, None, operation, state)
-            assert status.name
 
-        else:
-            pass
+        if status is Status.OK_NEXT_ACCESS:
+            continue
 
-        if Status.is_done(status):
-            break
-
-        if not Status.is_good(status):
+        if is_done(status) or not is_good(status):
             break
 
     log.debug("<--- handle file " + status.name)
-    return Status.to_simple_ok(status)
+    return status
 
 
 def check_modify_source(config: Configuration):
@@ -122,8 +116,6 @@ def check_modify_source(config: Configuration):
         log.info(operation.name)
 
         for root, dirs, files in os.walk(config.project_root):
-            status = Status.OK
-
             log.debug("dirs in: {} ".format(dirs))
             dirs[:] = [d for d in dirs if should_include_path(root, d, include)]
             log.debug("dirs out: {} ".format(dirs))
@@ -141,9 +133,7 @@ def check_modify_source(config: Configuration):
 
                 if filename.suffix in operation.file_types:
                     status = handle_file(config, full_path, operation)
-                    assert status.name
-
-                if not Status.is_good(status):
-                    return status
+                    if not is_good(status):
+                        return status
 
     return Status.OK
