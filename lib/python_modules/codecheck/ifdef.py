@@ -4,7 +4,7 @@ import re
 from .common import Operation, OperationState, Status
 
 g_ifdef_re = re.compile(r"^#[ \t]*(if(n?def)?)[ \t]+(?P<if_value>.*)$")
-g_endif_re = re.compile(r"^#[ \t]*endif(?P<endif_space>[ \t])*(?P<endif_value>.*)$")
+g_endif_re = re.compile(r"^#[ \t]*endif(?P<endif_space>([ \t])*)(?P<endif_value>.*)$")
 
 
 class IfDefState(OperationState):
@@ -42,7 +42,7 @@ class IfDef(Operation):
             if not space:
                 space = " "
             target_endif_value = r"#endif{}// {}{}".format(space, if_value_pair[1], "\n")
-            if not target_endif_value == state.line_content:
+            if target_endif_value is not state.line_content:
                 state.replacements.append((state.line_num, target_endif_value))
 
         return Status.OK
