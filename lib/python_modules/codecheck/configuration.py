@@ -2,9 +2,9 @@
 from pathlib import Path
 
 from .common import Access
-from .include_guards import IncludeGuard
-from .copyright import Copyright
-from .ifdef import IfDef
+from .operation.include_guards import IncludeGuard
+from .operation.copyright import Copyright
+from .operation.ifdef import IfDef
 
 
 class Configuration:

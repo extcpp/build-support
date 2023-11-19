@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 import re
 
-from .common import Operation, OperationState, Status
+from ..common import Operation, OperationState, Status
 
 g_ifdef_re = re.compile(r"^#[ \t]*(if(n?def)?)[ \t]+(?P<if_value>.*)$")
 g_endif_re = re.compile(r"^#[ \t]*endif(?P<endif_space>([ \t])*)(?P<endif_value>.*)$")
@@ -30,11 +30,13 @@ class IfDef(Operation):
         return Status.OK
 
     def read_line(self, state: OperationState):
+        # ifdef
         match = g_ifdef_re.match(state.line_content)
         if match:
             state.stack.append((state.line_num, match["if_value"]))
             return Status.OK_NEXT_LINE
 
+        # endif
         match = g_endif_re.match(state.line_content)
         if match:
             if_value_pair = state.stack.pop()

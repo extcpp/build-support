@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import IO
 
 from . import logger as log
-from codecheck.common import Status, Access, Operation, OperationState, to_simple_ok, is_done, is_good
+from codecheck.common import Status, Access, Operation, OperationState, is_done, is_good
 from codecheck.configuration import Configuration
 
 

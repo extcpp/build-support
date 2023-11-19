@@ -1,8 +1,8 @@
 #!/usr/bin/python3
 import re
 
-from . import logger as log
-from .common import Operation, OperationState, Status, Access
+from .. import logger as log
+from ..common import Operation, OperationState, Status, Access
 
 g_nofix_re = re.compile(r"//.*HDR_NOFIX")
 g_copy_re = re.compile(r"//.*Copyright.*Jan Christoph Uhde")

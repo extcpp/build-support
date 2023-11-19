@@ -2,8 +2,8 @@
 import re
 
 from obi.util.path import remove_from_front, change_ext
-from . import logger as log
-from .common import Operation, OperationState, Status
+from .. import logger as log
+from ..common import Operation, OperationState, Status
 
 g_guard_re = re.compile(r"#ifndef\s+_?(?P<guard>EXT_.*(HEADER|HPP|H))")
 
